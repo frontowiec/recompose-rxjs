@@ -1,10 +1,13 @@
 /*tslint:disable:jsx-no-lambda*/
+/*tslint:disable:no-console*/
 
-import {Avatar, List} from 'antd';
+import {Avatar, Input, List} from 'antd';
+import {includes} from 'lodash';
 import * as React from 'react';
 import {FormattedRelative} from 'react-intl';
-import {Subject} from "rxjs";
+import {BehaviorSubject, Subject} from "rxjs";
 import {ajax} from "rxjs/ajax";
+import {shareReplay, switchMap} from "rxjs/internal/operators";
 import {map, takeUntil, tap} from "rxjs/operators";
 
 interface IAuthor {
@@ -22,25 +25,35 @@ interface IFile {
 }
 
 interface IState {
-    files: IFile[]
+    files: IFile[];
+    value: string;
 }
 
 const onComponentUnmount$ = new Subject<boolean>();
 
 export class FileList extends React.Component<{}, IState> {
+    private onSearch$ = new BehaviorSubject<string>('');
+    private files$ = ajax({
+        method: 'GET',
+        url: `http://localhost:5000/api/files`
+    }).pipe(
+        map(({response}) => response.files),
+        shareReplay(1)
+    );
+
     constructor(props: {}) {
         super(props);
 
-        this.state = {files: []};
+        this.state = {files: [], value: ''};
     }
 
     public componentDidMount() {
-        ajax({
-            method: 'GET',
-            url: `http://localhost:5000/api/files`
-        }).pipe(
-            map(({response}) => response),
-            tap(files => this.setState(files)),
+        this.onSearch$.asObservable().pipe(
+            tap(value => this.setState({value})),
+            switchMap(searchedExtension => this.files$.pipe(
+                map((files: IFile[]) => files.filter(file => includes(file.name.toLowerCase(), searchedExtension.toLowerCase())))
+            )),
+            tap(files => this.setState({files})),
             takeUntil(onComponentUnmount$)
         ).subscribe();
     }
@@ -52,6 +65,9 @@ export class FileList extends React.Component<{}, IState> {
     public render() {
         return (
             <div style={{width: '50%'}}>
+                <Input type="text" placeholder="Type file name..."
+                       value={this.state.value}
+                       onChange={(event: React.ChangeEvent<{ value: string }>) => this.onSearch$.next(event.target.value)}/>
                 <List
                     itemLayout="horizontal"
                     dataSource={this.state.files}
