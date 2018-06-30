@@ -1,0 +1,17 @@
+{
+  "name": "stub-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.3",
+    "faker": "^4.1.0",
+    "lodash": "^4.17.10"
+  }
+}
