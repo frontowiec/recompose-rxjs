@@ -1,22 +1,18 @@
 import * as React from 'react';
+import {IntlProvider} from 'react-intl';
 import './App.css';
-
-import logo from './logo.svg';
+import {FileList} from "./components/FileList";
 
 class App extends React.Component {
-  public render() {
-    return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h1 className="App-title">Welcome to React</h1>
-        </header>
-        <p className="App-intro">
-          To get started, edit <code>src/App.tsx</code> and save to reload.
-        </p>
-      </div>
-    );
-  }
+    public render() {
+        return (
+            <IntlProvider locale="en">
+                <div style={{display: 'flex', justifyContent: 'center', padding: 24}}>
+                    <FileList/>
+                </div>
+            </IntlProvider>
+        );
+    }
 }
 
 export default App;

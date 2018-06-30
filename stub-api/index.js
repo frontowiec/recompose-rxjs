@@ -1,8 +1,11 @@
 const express = require('express');
 const faker = require('faker');
 const {times} = require('lodash');
+const cors = require('cors');
 
 const app = express();
+
+app.use(cors());
 
 const generateFile = () => ({
     author: {
@@ -12,7 +15,6 @@ const generateFile = () => ({
     name: faker.system.fileName(),
     type: faker.system.fileType(),
     ext: faker.system.fileExt(),
-    path: faker.system.filePath(),
     semver: faker.system.semver(),
     createDate: faker.date.past()
 });
