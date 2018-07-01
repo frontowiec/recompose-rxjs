@@ -1,3 +1,4 @@
+/*tslint:disable:jsx-no-lambda*/
 import {Avatar, Input, List} from 'antd';
 import {includes} from 'lodash';
 import * as React from 'react';
