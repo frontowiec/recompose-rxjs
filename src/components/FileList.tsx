@@ -2,12 +2,11 @@
 import {Avatar, Input, List} from 'antd';
 import {includes} from 'lodash';
 import * as React from 'react';
-import {StatelessComponent} from "react";
 import {FormattedRelative} from 'react-intl';
-import {compose, lifecycle, withHandlers, withState} from "recompose";
-import {BehaviorSubject, Subject} from "rxjs";
+import {componentFromStream, createEventHandler, setObservableConfig,} from "recompose";
+import {combineLatest, from, Observable} from "rxjs";
 import {ajax} from "rxjs/ajax";
-import {map, shareReplay, switchMap, takeUntil, tap} from "rxjs/operators";
+import {map, shareReplay, startWith, switchMap} from "rxjs/operators";
 
 interface IAuthor {
     avatar: string;
@@ -23,94 +22,68 @@ interface IFile {
     createDate: Date;
 }
 
-interface IProps {
-    inputValue: string;
-    setInputValue: (inputValue: string) => { inputValue: string };
-    files: IFile[];
-    setFiles: (files: IFile[]) => { files: IFile[] };
-}
+setObservableConfig({
+    fromESObservable: from,
+    toESObservable: stream => stream
+});
 
-interface IHandlers {
-    onInputChange: (event: React.ChangeEvent<{ value: string }>) => void;
-}
+type ChangeValueEvent = React.ChangeEvent<{ value: string }>;
 
-const onComponentUnmount$ = new Subject<boolean>();
+export const FileList = componentFromStream(props$ => {
+    const {handler: onInputChange, stream: onInputChange$} = createEventHandler<ChangeValueEvent, Observable<ChangeValueEvent>>();
 
-const FileList: StatelessComponent<IProps & IHandlers> = ({inputValue, onInputChange, files}) => (
-    <div style={{width: '50%'}}>
-        <Input type="text" placeholder="Type file name..."
-               value={inputValue}
-               onChange={onInputChange}/>
-        <List
-            itemLayout="horizontal"
-            dataSource={files}
-            renderItem={(file: IFile) => (
-                <List.Item>
-                    <List.Item.Meta
-                        avatar={<Avatar src={file.author.avatar}/>}
-                        title={
-                            <React.Fragment>
-                                <span>{file.author.name}</span>
-                                <span style={{fontWeight: 300}}> uploaded </span>
-                                <span style={{color: '#6151ff'}}>{file.name}</span>
-                            </React.Fragment>
-                        }
-                        description={
-                            <React.Fragment>
-                                <FormattedRelative value={file.createDate}/>
-                                <span> version: </span>
-                                <span style={{fontWeight: 500}}>{file.semver}</span>
-                            </React.Fragment>
-                        }
+    const onSearch$: Observable<string> = onInputChange$.pipe(
+        map(event => event.target.value)
+    );
+
+    const files$: Observable<IFile[]> = ajax({
+        method: 'GET',
+        url: `http://localhost:5000/api/files`
+    }).pipe(
+        map(({response}) => response.files),
+        shareReplay(1)
+    );
+
+    const searchedFiles$: Observable<IFile[]> = onSearch$.pipe(
+        startWith(''),
+        switchMap((searchedValue) => files$.pipe(
+            map(files => files.filter(file => includes(file.name.toLowerCase(), searchedValue.toLowerCase())))
+        ))
+    );
+
+    return combineLatest(props$, searchedFiles$)
+        .pipe(
+            map(([props, files]) => (
+                <div style={{width: '50%'}}>
+                    <Input type="text" placeholder="Type file name..."
+                        /*todo: value={inputValue}*/
+                           onChange={onInputChange}/>
+                    <List
+                        itemLayout="horizontal"
+                        dataSource={files}
+                        renderItem={(file: IFile) => (
+                            <List.Item>
+                                <List.Item.Meta
+                                    avatar={<Avatar src={file.author.avatar}/>}
+                                    title={
+                                        <React.Fragment>
+                                            <span>{file.author.name}</span>
+                                            <span style={{fontWeight: 300}}> uploaded </span>
+                                            <span style={{color: '#6151ff'}}>{file.name}</span>
+                                        </React.Fragment>
+                                    }
+                                    description={
+                                        <React.Fragment>
+                                            <FormattedRelative value={file.createDate}/>
+                                            <span> version: </span>
+                                            <span style={{fontWeight: 500}}>{file.semver}</span>
+                                        </React.Fragment>
+                                    }
+                                />
+                            </List.Item>
+                        )}
                     />
-                </List.Item>
-            )}
-        />
-    </div>
-);
-
-const onSearch$ = new BehaviorSubject<string>('');
-
-const files$ = ajax({
-    method: 'GET',
-    url: `http://localhost:5000/api/files`
-}).pipe(
-    map(({response}) => response.files),
-    shareReplay(1)
-);
-
-const searchedFiles$ = (setFiles: (files: IFile[]) => void) => onSearch$.asObservable().pipe(
-    switchMap(searchedExtension => files$.pipe(
-        map((files: IFile[]) => files.filter(file => includes(file.name.toLowerCase(), searchedExtension.toLowerCase())))
-    )),
-    tap(files => setFiles(files)), // side effect
-    takeUntil(onComponentUnmount$)
-);
-
-const cmpWithInputValueState = withState('inputValue', 'setInputValue', '');
-const cmpWithFilesState = withState('files', 'setFiles', []);
-
-const cmpWithHandlers = withHandlers<IProps, IHandlers>({
-    onInputChange: props => event => {
-        onSearch$.next(event.target.value);
-        props.setInputValue(event.target.value);
-    }
+                </div>
+            ))
+        )
 });
-
-const cmpLifecycle = lifecycle<IProps, {}>({
-    componentDidMount() {
-        searchedFiles$(this.props.setFiles).subscribe();
-    },
-    componentWillUnmount() {
-        onComponentUnmount$.next(true);
-    }
-});
-
-const enhance = compose(
-    cmpWithInputValueState,
-    cmpWithFilesState,
-    cmpWithHandlers,
-    cmpLifecycle
-);
-
-export default enhance(FileList);
