@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {IntlProvider} from 'react-intl';
 import './App.css';
-import {FileList} from "./components/FileList";
+import FileList from "./components/FileList";
 
 class App extends React.Component {
     public render() {
