@@ -1,19 +1,19 @@
 /*tslint:disable:jsx-no-lambda*/
-import {Avatar, Input, List} from 'antd';
+import {Input, List} from 'antd';
 import {includes} from 'lodash';
 import * as React from 'react';
-import {FormattedRelative} from 'react-intl';
 import {componentFromStream, createEventHandler, setObservableConfig,} from "recompose";
 import {combineLatest, from, Observable} from "rxjs";
 import {ajax} from "rxjs/ajax";
 import {map, shareReplay, startWith, switchMap} from "rxjs/operators";
+import {FileListItem} from "./FileListItem";
 
 interface IAuthor {
     avatar: string;
     name: string;
 }
 
-interface IFile {
+export interface IFile {
     author: IAuthor;
     name: string;
     type: string;
@@ -56,32 +56,13 @@ export const FileList = componentFromStream(props$ => {
             map(([props, files]) => (
                 <div style={{width: '50%'}}>
                     <Input type="text" placeholder="Type file name..."
-                        /*todo: value={inputValue}*/
-                           onChange={onInputChange}/>
-                    <List
-                        itemLayout="horizontal"
-                        dataSource={files}
-                        renderItem={(file: IFile) => (
-                            <List.Item>
-                                <List.Item.Meta
-                                    avatar={<Avatar src={file.author.avatar}/>}
-                                    title={
-                                        <React.Fragment>
-                                            <span>{file.author.name}</span>
-                                            <span style={{fontWeight: 300}}> uploaded </span>
-                                            <span style={{color: '#6151ff'}}>{file.name}</span>
-                                        </React.Fragment>
-                                    }
-                                    description={
-                                        <React.Fragment>
-                                            <FormattedRelative value={file.createDate}/>
-                                            <span> version: </span>
-                                            <span style={{fontWeight: 500}}>{file.semver}</span>
-                                        </React.Fragment>
-                                    }
-                                />
-                            </List.Item>
-                        )}
+                           onChange={onInputChange}
+                    />
+                    <List itemLayout="horizontal"
+                          dataSource={files}
+                          renderItem={(file: IFile) => (
+                              <FileListItem file={file}/>
+                          )}
                     />
                 </div>
             ))
